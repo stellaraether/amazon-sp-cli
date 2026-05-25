@@ -24,7 +24,7 @@ def register_auth_commands(cli_group):
     @click.option("--client-secret", help="Client secret")
     @click.option("--aws-access-key-id", help="AWS Access Key ID")
     @click.option("--aws-secret-access-key", help="AWS Secret Access Key")
-    @click.option("--seller-id", default="A2GKV2AN9F8YG3", help="Seller ID")
+    @click.option("--seller-id", help="Seller ID")
     @click.option("--marketplace-id", default="ATVPDKIKX0DER", help="Marketplace ID")
     @click.pass_context
     def auth_setup(
