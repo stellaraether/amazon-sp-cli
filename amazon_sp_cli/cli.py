@@ -8,6 +8,7 @@ from pathlib import Path
 
 import click
 
+from . import __version__
 from .auth import SPAPIAuth
 from .client import SPAPIClient
 
@@ -82,6 +83,7 @@ def handle_errors(f):
     return wrapper
 
 
+@click.version_option(version=__version__, prog_name="amz-sp")
 @click.group()
 @click.option("--credentials", "-c", help="Path to credentials YAML file")
 @click.pass_context
