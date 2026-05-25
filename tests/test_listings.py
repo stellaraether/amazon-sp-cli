@@ -364,6 +364,90 @@ class TestUpdateListing:
         assert call_args.kwargs["requirements"] == "LISTING_OFFER_ONLY"
 
 
+class TestListRecentListings:
+    """Test list-recent-listings command."""
+
+    @pytest.fixture
+    def mock_search_response(self):
+        """Mock search listings response."""
+        return {
+            "items": [
+                {
+                    "sku": "SKU-123",
+                    "summaries": [{"status": ["ACTIVE"], "asin": "B09BBL8T4Z"}],
+                },
+                {
+                    "sku": "SKU-456",
+                    "summaries": [{"status": ["ACTIVE"], "asin": "B09BBL8T5Z"}],
+                },
+            ],
+            "pagination": {"nextToken": "token123"},
+        }
+
+    @pytest.fixture
+    def runner(self):
+        """Create Click test runner."""
+        return CliRunner()
+
+    @patch("amazon_sp_cli.cli.SPAPIAuth")
+    @patch("amazon_sp_cli.cli.SPAPIClient")
+    def test_list_recent_listings(self, mock_client_class, mock_auth_class, runner, mock_search_response):
+        """Test listing recent listings."""
+        mock_client = Mock()
+        mock_client.search_listings_items.return_value = mock_search_response
+        mock_client_class.return_value = mock_client
+
+        mock_auth = Mock()
+        mock_auth_class.return_value = mock_auth
+
+        result = runner.invoke(cli, ["list-recent-listings"])
+
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert len(output["items"]) == 2
+        assert output["items"][0]["sku"] == "SKU-123"
+        assert output["pagination"]["nextToken"] == "token123"
+
+    @patch("amazon_sp_cli.cli.SPAPIAuth")
+    @patch("amazon_sp_cli.cli.SPAPIClient")
+    def test_list_recent_listings_with_pagination(
+        self, mock_client_class, mock_auth_class, runner, mock_search_response
+    ):
+        """Test listing recent listings with page size and token."""
+        mock_client = Mock()
+        mock_client.search_listings_items.return_value = mock_search_response
+        mock_client_class.return_value = mock_client
+
+        mock_auth = Mock()
+        mock_auth_class.return_value = mock_auth
+
+        result = runner.invoke(cli, ["list-recent-listings", "--page-size", "5", "--page-token", "abc"])
+
+        assert result.exit_code == 0
+        mock_client.search_listings_items.assert_called_once_with(
+            page_size=5,
+            page_token="abc",
+            included_data="summaries",
+        )
+
+    @patch("amazon_sp_cli.cli.SPAPIAuth")
+    @patch("amazon_sp_cli.cli.SPAPIClient")
+    def test_list_recent_listings_empty(self, mock_client_class, mock_auth_class, runner):
+        """Test listing recent listings with no results."""
+        mock_client = Mock()
+        mock_client.search_listings_items.return_value = {"items": []}
+        mock_client_class.return_value = mock_client
+
+        mock_auth = Mock()
+        mock_auth_class.return_value = mock_auth
+
+        result = runner.invoke(cli, ["list-recent-listings"])
+
+        assert result.exit_code == 0
+        output = json.loads(result.output)
+        assert output["items"] == []
+
+
 class TestDeleteListing:
     """Test delete-listing command."""
 

@@ -3,7 +3,6 @@
 from .cli import _ensure_auth_client, cli
 from .commands.a_plus import register_a_plus_commands
 from .commands.auth import register_auth_commands
-from .commands.inventory import register_inventory_commands
 from .commands.listings import register_listings_commands
 from .commands.pricing import register_pricing_commands
 from .commands.update import register_update_commands
@@ -12,5 +11,4 @@ register_auth_commands(cli)
 register_listings_commands(cli, _ensure_auth_client)
 register_pricing_commands(cli, _ensure_auth_client)
 register_a_plus_commands(cli, _ensure_auth_client)
-register_inventory_commands(cli, _ensure_auth_client)
 register_update_commands(cli)
