@@ -140,6 +140,22 @@ class SPAPIClient:
 
         return self.request("PUT", path, data)
 
+    def get_fba_inventory(self, seller_skus: str = None, next_token: str = None, details: bool = True) -> dict:
+        """Get FBA inventory summaries."""
+        path = "/fba/inventory/v1/getInventorySummaries"
+        params = {
+            "details": "true" if details else "false",
+            "granularityType": "Marketplace",
+            "granularityId": self.marketplace_id,
+            "marketplaceIds": self.marketplace_id,
+        }
+        if seller_skus:
+            params["sellerSkus"] = seller_skus
+        if next_token:
+            params["nextToken"] = next_token
+        path += "?" + urlencode(params)
+        return self.request("GET", path)
+
     def get_catalog_item(self, asin: str) -> dict:
         """Get catalog item details."""
         path = f"/catalog/2022-04-01/items/{asin}"
