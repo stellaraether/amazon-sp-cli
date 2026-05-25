@@ -180,6 +180,22 @@ def register_listings_commands(cli_group, ensure_auth_client):
         else:
             click.echo(json.dumps(response, indent=2))
 
+    @cli_group.command("list-recent-listings")
+    @click.option("--page-size", type=int, default=10, help="Number of items per page (max 20)")
+    @click.option("--page-token", help="Pagination token from a previous response")
+    @click.option("--included-data", default="summaries", help="Comma-separated included data sets")
+    @click.pass_context
+    @handle_errors
+    def list_recent_listings(ctx, page_size, page_token, included_data):
+        """List recent listings for the seller."""
+        _, client = ensure_auth_client(ctx)
+        response = client.search_listings_items(
+            page_size=page_size,
+            page_token=page_token,
+            included_data=included_data,
+        )
+        click.echo(json.dumps(response, indent=2))
+
     @cli_group.command()
     @click.argument("sku")
     @click.pass_context
