@@ -17,7 +17,8 @@ class SPAPIAuth:
     CACHE_FILE = Path.home() / ".config" / "amazon-sp-cli" / "token-cache.json"
     BUFFER_SECONDS = 60
 
-    def __init__(self, credentials_path: str = None):
+    def __init__(self, credentials_path: str = None, profile: str = "default"):
+        self.profile = profile
         self.credentials = self._load_credentials(credentials_path)
         self._ensure_cache_dir()
 
@@ -32,7 +33,7 @@ class SPAPIAuth:
         with open(path, "r") as f:
             config = yaml.safe_load(f)
 
-        return config.get("default", config)
+        return config.get(self.profile, config)
 
     def _ensure_cache_dir(self):
         """Ensure cache directory exists."""

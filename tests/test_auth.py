@@ -23,6 +23,10 @@ default:
   refresh_token: "test-refresh-token"
   client_id: "test-client-id"
   client_secret: "test-client-secret"
+prod:
+  refresh_token: "prod-refresh-token"
+  client_id: "prod-client-id"
+  client_secret: "prod-client-secret"
 """
             )
             path = f.name
@@ -43,6 +47,20 @@ default:
         assert auth.credentials["refresh_token"] == "test-refresh-token"
         assert auth.credentials["client_id"] == "test-client-id"
         assert auth.credentials["client_secret"] == "test-client-secret"
+
+    def test_load_credentials_profile(self, temp_credentials):
+        """Test credentials loading with a specific profile."""
+        auth = SPAPIAuth(temp_credentials, profile="prod")
+        assert auth.credentials["refresh_token"] == "prod-refresh-token"
+        assert auth.credentials["client_id"] == "prod-client-id"
+        assert auth.credentials["client_secret"] == "prod-client-secret"
+
+    def test_load_credentials_missing_profile_fallback(self, temp_credentials):
+        """Test fallback when profile is missing."""
+        auth = SPAPIAuth(temp_credentials, profile="nonexistent")
+        # Falls back to the whole config dict
+        assert "default" in auth.credentials
+        assert "prod" in auth.credentials
 
     def test_token_valid(self, temp_credentials, temp_cache_dir):
         """Test token validation."""
