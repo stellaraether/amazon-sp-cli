@@ -58,7 +58,7 @@ def _check_path():
 def _ensure_auth_client(ctx):
     """Lazily create auth and client if not already present."""
     if "client" not in ctx.obj:
-        auth = SPAPIAuth(ctx.obj.get("credentials_path"))
+        auth = SPAPIAuth(ctx.obj.get("credentials_path"), ctx.obj.get("profile", "default"))
         if auth.credentials is None:
             click.echo("Error: No credentials found. Run 'amz-sp auth setup' first.", err=True)
             raise click.Abort()
@@ -86,9 +86,11 @@ def handle_errors(f):
 @click.version_option(version=__version__, prog_name="amz-sp")
 @click.group()
 @click.option("--credentials", "-c", help="Path to credentials YAML file")
+@click.option("--profile", "-p", default="default", help="Credentials profile to use")
 @click.pass_context
-def cli(ctx, credentials):
+def cli(ctx, credentials, profile):
     """Amazon SP-API CLI - Manage listings, pricing, inventory, and more."""
     _check_path()
     ctx.ensure_object(dict)
     ctx.obj["credentials_path"] = credentials
+    ctx.obj["profile"] = profile
