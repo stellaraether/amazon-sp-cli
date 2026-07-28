@@ -61,6 +61,7 @@ class TestUpdateListing:
     def test_update_listing_with_title(self, mock_client_class, mock_auth_class, runner):
         """Test updating a listing title."""
         mock_client = Mock()
+        mock_client.get_listing.return_value = {"attributes": {}}
         mock_client.put_listing.return_value = {"sku": "TEST-SKU", "status": "ACCEPTED"}
         mock_client_class.return_value = mock_client
 
@@ -90,6 +91,7 @@ class TestUpdateListing:
     def test_update_listing_with_multiple_flags(self, mock_client_class, mock_auth_class, runner):
         """Test updating multiple attributes at once."""
         mock_client = Mock()
+        mock_client.get_listing.return_value = {"attributes": {}}
         mock_client.put_listing.return_value = {"sku": "TEST-SKU", "status": "ACCEPTED"}
         mock_client_class.return_value = mock_client
 
@@ -138,6 +140,7 @@ class TestUpdateListing:
     def test_update_listing_with_images(self, mock_client_class, mock_auth_class, runner):
         """Test updating images."""
         mock_client = Mock()
+        mock_client.get_listing.return_value = {"attributes": {}}
         mock_client.put_listing.return_value = {"sku": "TEST-SKU", "status": "ACCEPTED"}
         mock_client_class.return_value = mock_client
 
@@ -171,6 +174,7 @@ class TestUpdateListing:
     def test_update_listing_with_attributes_json(self, mock_client_class, mock_auth_class, runner):
         """Test updating with raw attributes JSON."""
         mock_client = Mock()
+        mock_client.get_listing.return_value = {"attributes": {}}
         mock_client.put_listing.return_value = {"sku": "TEST-SKU", "status": "ACCEPTED"}
         mock_client_class.return_value = mock_client
 
@@ -198,6 +202,7 @@ class TestUpdateListing:
     def test_update_listing_flags_override_json(self, mock_client_class, mock_auth_class, runner):
         """Test that CLI flags override --attributes-json for same keys."""
         mock_client = Mock()
+        mock_client.get_listing.return_value = {"attributes": {}}
         mock_client.put_listing.return_value = {"sku": "TEST-SKU", "status": "ACCEPTED"}
         mock_client_class.return_value = mock_client
 
@@ -228,6 +233,7 @@ class TestUpdateListing:
     def test_update_listing_dry_run(self, mock_client_class, mock_auth_class, runner):
         """Test dry-run mode."""
         mock_client = Mock()
+        mock_client.get_listing.return_value = {"attributes": {}}
         mock_client.put_listing.return_value = {"sku": "TEST-SKU", "issues": []}
         mock_client_class.return_value = mock_client
 
@@ -256,6 +262,7 @@ class TestUpdateListing:
     def test_update_listing_with_issues(self, mock_client_class, mock_auth_class, runner):
         """Test that ERROR issues cause failure."""
         mock_client = Mock()
+        mock_client.get_listing.return_value = {"attributes": {}}
         mock_client.put_listing.return_value = {
             "sku": "TEST-SKU",
             "issues": [
@@ -339,6 +346,7 @@ class TestUpdateListing:
     def test_update_listing_requirements_option(self, mock_client_class, mock_auth_class, runner):
         """Test requirements option is passed through."""
         mock_client = Mock()
+        mock_client.get_listing.return_value = {"attributes": {}}
         mock_client.put_listing.return_value = {"sku": "TEST-SKU", "status": "ACCEPTED"}
         mock_client_class.return_value = mock_client
 
@@ -362,6 +370,96 @@ class TestUpdateListing:
         assert result.exit_code == 0
         call_args = mock_client.put_listing.call_args
         assert call_args.kwargs["requirements"] == "LISTING_OFFER_ONLY"
+
+    @patch("amazon_sp_cli.cli.SPAPIAuth")
+    @patch("amazon_sp_cli.cli.SPAPIClient")
+    def test_update_listing_merges_existing_attributes(self, mock_client_class, mock_auth_class, runner):
+        """Test that existing attributes are merged in by default, with updates on top."""
+        mock_client = Mock()
+        mock_client.get_listing.return_value = {
+            "attributes": {
+                "item_name": [{"value": "Old Title", "language_tag": "en_US"}],
+                "list_price": [{"currency": "USD", "value": 29.99}],
+            }
+        }
+        mock_client.put_listing.return_value = {"sku": "TEST-SKU", "status": "ACCEPTED"}
+        mock_client_class.return_value = mock_client
+
+        mock_auth = Mock()
+        mock_auth_class.return_value = mock_auth
+
+        result = runner.invoke(
+            cli,
+            [
+                "update-listing",
+                "TEST-SKU",
+                "--product-type",
+                "PET_TOY",
+                "--attributes-json",
+                '{"generic_keyword": [{"value": "chew toy", "language_tag": "en_US"}]}',
+            ],
+        )
+
+        assert result.exit_code == 0
+        mock_client.get_listing.assert_called_once_with("TEST-SKU")
+        attrs = mock_client.put_listing.call_args.kwargs["attributes"]
+        # new attribute is added
+        assert attrs["generic_keyword"] == [{"value": "chew toy", "language_tag": "en_US"}]
+        # existing attributes are preserved
+        assert attrs["item_name"] == [{"value": "Old Title", "language_tag": "en_US"}]
+        assert attrs["list_price"] == [{"currency": "USD", "value": 29.99}]
+
+    @patch("amazon_sp_cli.cli.SPAPIAuth")
+    @patch("amazon_sp_cli.cli.SPAPIClient")
+    def test_update_listing_merge_overrides_existing_attribute(self, mock_client_class, mock_auth_class, runner):
+        """Test that a provided attribute overrides the existing one."""
+        mock_client = Mock()
+        mock_client.get_listing.return_value = {
+            "attributes": {"item_name": [{"value": "Old Title", "language_tag": "en_US"}]}
+        }
+        mock_client.put_listing.return_value = {"sku": "TEST-SKU", "status": "ACCEPTED"}
+        mock_client_class.return_value = mock_client
+
+        mock_auth = Mock()
+        mock_auth_class.return_value = mock_auth
+
+        result = runner.invoke(
+            cli,
+            ["update-listing", "TEST-SKU", "--product-type", "PET_TOY", "--title", "New Title"],
+        )
+
+        assert result.exit_code == 0
+        attrs = mock_client.put_listing.call_args.kwargs["attributes"]
+        assert attrs["item_name"] == [{"value": "New Title", "language_tag": "en_US"}]
+
+    @patch("amazon_sp_cli.cli.SPAPIAuth")
+    @patch("amazon_sp_cli.cli.SPAPIClient")
+    def test_update_listing_no_merge_existing(self, mock_client_class, mock_auth_class, runner):
+        """Test --no-merge-existing sends only the provided attributes."""
+        mock_client = Mock()
+        mock_client.put_listing.return_value = {"sku": "TEST-SKU", "status": "ACCEPTED"}
+        mock_client_class.return_value = mock_client
+
+        mock_auth = Mock()
+        mock_auth_class.return_value = mock_auth
+
+        result = runner.invoke(
+            cli,
+            [
+                "update-listing",
+                "TEST-SKU",
+                "--product-type",
+                "PET_TOY",
+                "--title",
+                "New Title",
+                "--no-merge-existing",
+            ],
+        )
+
+        assert result.exit_code == 0
+        mock_client.get_listing.assert_not_called()
+        attrs = mock_client.put_listing.call_args.kwargs["attributes"]
+        assert attrs == {"item_name": [{"value": "New Title", "language_tag": "en_US"}]}
 
 
 class TestListRecentListings:

@@ -115,6 +115,15 @@ def register_listings_commands(cli_group, ensure_auth_client):
         "--attributes-json",
         help="Raw JSON string of additional attributes (merged on top of other flags)",
     )
+    @click.option(
+        "--merge-existing/--no-merge-existing",
+        default=True,
+        help=(
+            "Fetch the current listing first and send its attributes along with the "
+            "updates, so partial updates pass Amazon's full-replace validation "
+            "(default: --merge-existing)"
+        ),
+    )
     @click.option("--dry-run", is_flag=True, help="Validate without applying")
     @click.pass_context
     @handle_errors
@@ -134,6 +143,7 @@ def register_listings_commands(cli_group, ensure_auth_client):
         shipping_template,
         language_tag,
         attributes_json,
+        merge_existing,
         dry_run,
     ):
         """Update listing attributes for a SKU."""
@@ -156,6 +166,15 @@ def register_listings_commands(cli_group, ensure_auth_client):
         if not attributes:
             click.echo("Error: No attributes provided. Use flags or --attributes-json.", err=True)
             raise click.Abort()
+
+        if merge_existing:
+            # PUT replaces the whole listing, so a payload with only the changed
+            # attributes fails validation for missing required fields. Send the
+            # existing attributes back with the updates merged on top.
+            existing = client.get_listing(sku)
+            merged = dict(existing.get("attributes") or {})
+            merged.update(attributes)
+            attributes = merged
 
         mode = "VALIDATION_PREVIEW" if dry_run else None
         response = client.put_listing(
